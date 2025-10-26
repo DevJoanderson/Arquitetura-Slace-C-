@@ -1,16 +1,16 @@
 using Api.AppDb;
 using Api.Features.Orders.Create;
 using Api.Features.Orders.GetById;
+using Api.Features.Orders.List;
+using Api.Features.Orders.Delete;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Api.Features.Orders.GetById;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ====== Services (DI) ======
+// ===== Services =====
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -24,13 +24,13 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
 });
 
-// FluentValidation (varre o assembly e registra validators)
+// FluentValidation (auto-validação + scan do assembly)
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 var app = builder.Build();
 
-// ====== Pipeline (Middleware) ======
+// ===== Pipeline =====
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -39,27 +39,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ====== Endpoints Minimal API ======
-var orders = app.MapGroup("/orders").WithTags("Orders");
+// ===== Endpoints (Orders) =====
+app.MapCreateOrderEndpoint();
+app.MapGetOrderByIdEndpoint();
+app.MapListOrdersEndpoint();
+app.MapDeleteOrderEndpoint();
 
-// POST /orders  -> cria pedido
-orders.MapPost("/", async (CreateOrderCommand cmd, ISender mediator) =>
-{
-    var id = await mediator.Send(cmd);
-    return Results.Created($"/orders/{id}", new { id });
-})
-.Produces(StatusCodes.Status201Created)
-.Produces(StatusCodes.Status400BadRequest)
-.WithName("CreateOrder");
-
-// GET /orders/{id} -> busca por Id
-orders.MapGet("/{id:guid}", async (Guid id, ISender mediator) =>
-{
-    var dto = await mediator.Send(new GetOrderByIdQuery(id));
-    return Results.Ok(dto);
-})
-.Produces<OrderDto>(StatusCodes.Status200OK)
-.Produces(StatusCodes.Status404NotFound)
-.WithName("GetOrderById");
+// (Removido o exemplo /weatherforecast)
 
 app.Run();
